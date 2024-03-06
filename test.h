@@ -296,5 +296,6 @@ inline void check(bool a) {
  * V1.2: added possibilty to count constructions and destructions of some type
  * V1.3: tweaks on check for int and double types
  * V1.4: Adding thread safety in OpenMP programs
- * V1.5: reduce accuraccy in comparing double and float to 1e-4
+ * V1.5: reduce accuraccy in comparing double and float to 1e-8
+ * V1.6: Increase precision for printing floating point values
  */
