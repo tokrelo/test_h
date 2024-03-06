@@ -1,6 +1,6 @@
 /** test.h, an extremly simple test framework.
  * Version 1.5
- * Copyright (C) 2022-2023 Tobias Kreilos, Offenburg University of Applied
+ * Copyright (C) 2022-2024 Tobias Kreilos, Offenburg University of Applied
  * Sciences
  *
  * This program is free software: you can redistribute it and/or modify
