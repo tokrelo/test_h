@@ -1,5 +1,5 @@
 /** test.h, an extremly simple test framework.
- * Version 1.5
+ * Version 1.6
  * Copyright (C) 2022-2024 Tobias Kreilos, Offenburg University of Applied
  * Sciences
  *
@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
- 
 
 /**
  * The framework defines a function check(a,b) that can be called with
@@ -32,44 +31,49 @@
  * count how many instances of an object are still alive at the end of a
  * program. To use it, derive your class from InstanceCount<ClassName> and the
  * message is automatically printed at the end of the program.
- * 
- * The functions are thread- and reentrant-safe.
+ *
+ * The functions are thread- and reentrant-safe. Support for OpenMP is included.
  * Execution with MPI is supported, but no collection of the results occurs. All
  * tests are executed locally, results are printed for every node separately.
- * 
+ *
  * Caution: the TEST macro uses static storage of objects, so be aware of the
  * static initialization order fiasco when using multiple source files.
  */
 
 #ifndef VERY_SIMPLE_TEST_H
-  #define VERY_SIMPLE_TEST_H
+#define VERY_SIMPLE_TEST_H
 
-  #include <cmath>
-  #include <iostream>
-  #include <sstream>
-  #include <atomic>
+#include <atomic>
+#include <cmath>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 
-  /** Simple macro to execute the code that follows the macro (without call from
-   * main)
-   *
-   * Define a class, that is directly instantiated
-   * and contains the test code in the constructor.
-   *
-   * Usage:
-   * TEST(MyTest)
-   * {
-   *    // test code
-   * }
-   */
-  #define TEST(name)              \
-    struct _TestClass##name {     \
-      _TestClass##name();         \
-    } _TestClass##name##Instance; \
-    _TestClass##name::_TestClass##name()
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+/** Simple macro to execute the code that follows the macro (without call from
+ * main)
+ *
+ * Define a class, that is directly instantiated
+ * and contains the test code in the constructor.
+ *
+ * Usage:
+ * TEST(MyTest) {
+ *    // test code
+ * }
+ */
+#define TEST(name)              \
+  struct _TestClass##name {     \
+    _TestClass##name();         \
+  } _TestClass##name##Instance; \
+  _TestClass##name::_TestClass##name()
 
 // Use a namespace to hide implementation details
 namespace Test::Detail {
-  
+
 /**
  * Make it possible to print the underlying value of class enums with ostream
  *
@@ -90,6 +94,7 @@ std::ostream& operator<<(
 template <typename T>
 std::string toString(const T& t) {
   std::ostringstream ss;
+  ss << std::setprecision(10);
   ss << t;
   return "\"" + ss.str() + "\"";
 }
@@ -111,7 +116,7 @@ bool isEqual(const T& t1, const T& t2) {
 }
 
 /**
- * Double values are equal if they differ no more than 1e-4
+ * Double values are equal if they differ no more than 1e-8
  */
 template <>
 inline bool isEqual<double>(const double& expectedValue,
@@ -158,10 +163,12 @@ class Test {
     bool testResult = isEqual(expectedValue, actualValue);
     if (testResult == true) {
       registerPassingTest();
+#pragma omp critical
       std::cout << "Test successful! Expected value == actual value (="
                 << toString(expectedValue) << ")" << std::endl;
     } else {
       registerFailingTest();
+#pragma omp critical
       std::cout << "Error in test: expected value " << toString(expectedValue)
                 << ", but actual value was " << toString(actualValue)
                 << std::endl;
@@ -172,7 +179,10 @@ class Test {
 
  private:
   /**
-   * On destruction, print a summary of all tests.
+   * Print a summary of all tests at the end of program execution.
+   *
+   * Since the Test class is a static Singleton, destruction happens when the
+   * program terminates, so this is a good place to print the summary.
    */
   ~Test() {
     std::cout << "\n--------------------------------------" << std::endl;
@@ -285,7 +295,6 @@ inline void check(bool a) {
  * actual value type
  * V1.2: added possibilty to count constructions and destructions of some type
  * V1.3: tweaks on check for int and double types
- * V1.4: Adding thread safety in OpenMP programs (not general thread safety, as
- *       OpenMP and std::thread might not play along)
+ * V1.4: Adding thread safety in OpenMP programs
  * V1.5: reduce accuraccy in comparing double and float to 1e-4
  */
