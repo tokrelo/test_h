@@ -1,5 +1,5 @@
 /** test.h, an extremly simple test framework.
- * Version 1.6
+ * Version 1.7
  * Copyright (C) 2022-2024 Tobias Kreilos, Offenburg University of Applied
  * Sciences
  *
@@ -24,7 +24,7 @@
  * floating point numbers) and prints the result of the comparison on the
  * command line. Additionally a summary of all tests is printed at the end of
  * the program.
- * There is TEST macro, which you can place outside main to group
+ * There is a TEST macro, which you can place outside main to group
  * tests together. Code in the macro is automatically executed at the beginning
  * of the program.
  * The file also defines a class InstanceCount, that can be used to
@@ -38,6 +38,18 @@
  *
  * Caution: the TEST macro uses static storage of objects, so be aware of the
  * static initialization order fiasco when using multiple source files.
+ *
+ * Example usage:
+ *
+ * #include "test.h"
+ * TEST(MyTest) {
+ *   check(1, 1);
+ * }
+ *
+ * int main() {
+ *   const std::string s = "Hi";
+ *   check(s, "Hi");
+ * }
  */
 
 #ifndef VERY_SIMPLE_TEST_H
@@ -48,7 +60,6 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -163,12 +174,16 @@ class Test {
     bool testResult = isEqual(expectedValue, actualValue);
     if (testResult == true) {
       registerPassingTest();
+#ifdef _OPENMP
 #pragma omp critical
+#endif
       std::cout << "Test successful! Expected value == actual value (="
                 << toString(expectedValue) << ")" << std::endl;
     } else {
       registerFailingTest();
+#ifdef _OPENMP
 #pragma omp critical
+#endif
       std::cout << "Error in test: expected value " << toString(expectedValue)
                 << ", but actual value was " << toString(actualValue)
                 << std::endl;
@@ -298,4 +313,6 @@ inline void check(bool a) {
  * V1.4: Adding thread safety in OpenMP programs
  * V1.5: reduce accuraccy in comparing double and float to 1e-8
  * V1.6: Increase precision for printing floating point values
+ * V1.7: Put #ifdef _OPENMP around pragmas to avoid warnings when compiling
+ *       without -fopenmp
  */
