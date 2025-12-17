@@ -351,4 +351,6 @@ inline void check(bool a, std::string_view message = "") {
  * V1.6: Increase precision for printing floating point values
  * V1.7: Put #ifdef _OPENMP around pragmas to avoid warnings when compiling
  *       without -fopenmp
+ * V1.8: Added message to check function
+ *       Added check_exception macro
  */
