@@ -1,5 +1,0 @@
----
-triple:          'arm64-apple-darwin'
-binary-path:     '/Users/tk/code/test_h/test'
-relocations:     []
-...
