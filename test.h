@@ -1,6 +1,6 @@
 /** test.h, an extremly simple test framework.
- * Version 1.7
- * Copyright (C) 2022-2024 Tobias Kreilos, Offenburg University of Applied
+ * Version 1.8
+ * Copyright (C) 2022-2025 Tobias Kreilos, Offenburg University of Applied
  * Sciences
  */
 
@@ -47,6 +47,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -68,6 +69,17 @@
     _TestClass##name();         \
   } _TestClass##name##Instance; \
   _TestClass##name::_TestClass##name()
+
+/** Macro that allows testing of whether an exception was thrown.
+ *
+ */
+#define check_exception(function)             \
+  try {                                       \
+    function;                                 \
+    Test::Detail::check_exception_error();    \
+  } catch (std::exception & e) {              \
+    Test::Detail::check_exception_success(e); \
+  }
 
 // Use a namespace to hide implementation details
 namespace Test::Detail {
@@ -157,7 +169,9 @@ class Test {
    * result.
    */
   template <typename T>
-  bool check(const T& expectedValue, const T& actualValue) {
+  bool check(const T& expectedValue,
+             const T& actualValue,
+             std::string_view message) {
     bool testResult = isEqual(expectedValue, actualValue);
     if (testResult == true) {
       registerPassingTest();
@@ -165,15 +179,22 @@ class Test {
 #pragma omp critical
 #endif
       std::cout << "Test successful! Expected value == actual value (="
-                << toString(expectedValue) << ")" << std::endl;
+                << toString(expectedValue) << ")";
+      if (message != "") {
+        std::cout << ": " << message;
+      }
+      std::cout << std::endl;
     } else {
       registerFailingTest();
 #ifdef _OPENMP
 #pragma omp critical
 #endif
       std::cout << "Error in test: expected value " << toString(expectedValue)
-                << ", but actual value was " << toString(actualValue)
-                << std::endl;
+                << ", but actual value was " << toString(actualValue);
+      if (message != "") {
+        std::cout << ": " << message;
+      }
+      std::cout << std::endl;
     }
 
     return testResult;
@@ -235,6 +256,15 @@ class InstanceCounterHelper {
   std::atomic<int> total = 0;
 };
 
+void check_exception_success(std::exception& e) {
+  Test::instance().check(true, true,
+                         std::string("Exception ") + e.what() + " thrown");
+}
+
+void check_exception_error() {
+ Test::instance().check(true, false, "No exception thrown");
+}
+
 }  // namespace Test::Detail
 
 /**
@@ -266,18 +296,23 @@ class InstanceCounter {
  * summary of all tests is printed.
  */
 template <typename T1, typename T2>
-void check(const T1& actualValue, const T2& expectedValue) {
+void check(const T1& actualValue,
+           const T2& expectedValue,
+           std::string_view message = "") {
   const T1& expectedValueCasted{
       expectedValue};  // allows conversion in general, but avoids narrowing
                        // conversion
-  Test::Detail::Test::instance().check(expectedValueCasted, actualValue);
+  Test::Detail::Test::instance().check(expectedValueCasted, actualValue,
+                                       message);
 }
 
 // allow conversion from int to double explicitely
 template <>
-inline void check(const double& actualValue, const int& expectedValue) {
+inline void check(const double& actualValue,
+                  const int& expectedValue,
+                  std::string_view message) {
   Test::Detail::Test::instance().check(static_cast<double>(expectedValue),
-                                       actualValue);
+                                       actualValue, message);
 }
 
 /**
@@ -285,8 +320,8 @@ inline void check(const double& actualValue, const int& expectedValue) {
  * Result is printed on the command line and at the end of the program, a
  * summary of all tests is printed.
  */
-inline void check(bool a) {
-  Test::Detail::Test::instance().check(true, a);
+inline void check(bool a, std::string_view message = "") {
+  Test::Detail::Test::instance().check(true, a, message);
 }
 
 #endif  // VERY_SIMPLE_TEST_H
